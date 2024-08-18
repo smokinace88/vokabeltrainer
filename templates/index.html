@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deutsch-Italienisch Vokabeltrainer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <h1>Deutsch-Italienisch Vokabeltrainer</h1>
+    
+    <div id="quiz-section">
+        <h2 id="question">Lade eine Vokabel...</h2>
+        <input type="text" id="answer" placeholder="Gib die italienische Übersetzung ein">
+        <button onclick="checkAnswer()">Überprüfen</button>
+        <p id="result"></p>
+    </div>
+
+    <div id="add-section">
+        <h2>Neue Vokabel hinzufügen</h2>
+        <input type="text" id="new-german" placeholder="Deutsches Wort">
+        <input type="text" id="new-italian" placeholder="Italienische Übersetzung">
+        <button onclick="addVocab()">Hinzufügen</button>
+        <p id="add-result"></p>
+    </div>
+
+    <div id="vocablist-section">
+        <h2>Vokabelliste</h2>
+        <button onclick="loadVocabList()">Vokabelliste anzeigen</button>
+        <ul id="vocab-list"></ul>
+    </div>
+
+    <script>
+        function loadQuiz() {
+            fetch('/quiz')
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    document.getElementById('question').innerText = data.error;
+                } else {
+                    document.getElementById('question').innerText = `Was ist die italienische Übersetzung für '${data.german_word}'?`;
+                    document.getElementById('question').setAttribute('data-german', data.german_word);
+                }
+            });
+        }
+
+        function checkAnswer() {
+            const german_word = document.getElementById('question').getAttribute('data-german');
+            const user_answer = document.getElementById('answer').value;
+
+            fetch('/check', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ german_word, user_answer })
+            })
+            .then(response => response.json())
+            .then(data => {
+                const resultElement = document.getElementById('result');
+                if (data.result === 'correct') {
+                    resultElement.innerText = "Richtig!";
+                } else {
+                    resultElement.innerText = `Falsch! Die richtige Antwort ist '${data.correct_answer}'.`;
+                }
+                document.getElementById('answer').value = '';
+                loadQuiz();
+            });
+        }
+
+        function addVocab() {
+            const german_word = document.getElementById('new-german').value;
+            const italian_word = document.getElementById('new-italian').value;
+
+            fetch('/add', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ german_word, italian_word })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('add-result').innerText = "Vokabel erfolgreich hinzugefügt!";
+                    document.getElementById('new-german').value = '';
+                    document.getElementById('new-italian').value = '';
+                } else {
+                    document.getElementById('add-result').innerText = "Fehler beim Hinzufügen der Vokabel.";
+                }
+            });
+        }
+
+        function loadVocabList() {
+            fetch('/vocablist')
+            .then(response => response.json())
+            .then(data => {
+                const vocabListElement = document.getElementById('vocab-list');
+                vocabListElement.innerHTML = '';  // Lösche vorherige Einträge
+
+                for (const [german, italian] of Object.entries(data)) {
+                    const listItem = document.createElement('li');
+                    listItem.textContent = `${german} - ${italian}`;
+                    vocabListElement.appendChild(listItem);
+                }
+            });
+        }
+
+        window.onload = loadQuiz;
+    </script>
+</body>
+</html>
